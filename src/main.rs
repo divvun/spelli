@@ -72,11 +72,37 @@ struct NukeArgs {
     help: bool,
 }
 
+fn setup_logger() {
+    let log_path = pathos::system::app_log_dir("WinDivvun");
+    match std::fs::create_dir_all(&log_path) {
+        Ok(_) => {},
+        Err(e) => {
+            eprintln!("{:?}", e);
+            eprintln!("LOGGING IS DISABLED!");
+            return;
+        }
+    }
+
+    fern::Dispatch::new()
+        .format(|out, message, record| {
+            out.finish(format_args!(
+                "[{} {:<5} {}] {}",
+                chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
+                record.level(),
+                record.target(),
+                message
+            ))
+        })
+        .level(log::LevelFilter::Debug)
+        .chain(std::io::stdout())
+        .chain(fern::log_file(log_path.join("spelli.log")).unwrap())
+        .apply()
+        .unwrap();
+}
+
 fn main() {
     let args = Args::parse_args_default_or_exit();
-
-    let env = env_logger::Env::default().default_filter_or("debug");
-    env_logger::from_env(env).init();
+    setup_logger();
 
     let command = match args.command {
         Some(v) => v,
@@ -98,20 +124,8 @@ fn main() {
             Ok(())
         }
         Command::Nuke(_args) => {
-            use std::io::{self, Write};
-
-            print!("Are you sure you want to clear the speller registry? [y/N]> ");
-            io::stdout().flush().unwrap();
-
-            let mut input = String::new();
-            io::stdin().read_line(&mut input).unwrap();
-            if input.trim().to_ascii_lowercase() == "y" {
-                crate::reg::nuke_key().unwrap();
-                return;
-            } else {
-                eprintln!("Aborted.");
-                std::process::exit(1);
-            }
+            crate::reg::nuke_key().unwrap();
+            Ok(())
         }
     };
 

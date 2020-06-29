@@ -30,6 +30,8 @@ pub(crate) fn nuke_key() -> Result<(), Error> {
             .map(|x| x.to_string_lossy())
             .collect::<Vec<_>>(),
     )?;
+    crate::refresh::refresh();
+    log::info!("All languages have now been marked as deregistered.");
     Ok(())
 }
 
