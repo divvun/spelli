@@ -20,13 +20,21 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v2
+    - name: Setup Divvun CI
+      uses: divvun/actions/setup@master
+      with:
+        key: ${{ secrets.DIVVUN_KEY }}
+    - name: Get version
+      uses: divvun/actions/version@develop
+      with:
+        cargo: true
     - name: Install Rust toolchain
       uses: actions-rs/toolchain@v1
       with:
         toolchain: stable
         profile: minimal
         override: true
-        target: i686-windows-pc-msvc
+        target: i686-pc-windows-msvc
     - name: Build
       uses: actions-rs/cargo@v1
       env:
@@ -37,28 +45,11 @@ jobs:
         toolchain: stable
     - run: mkdir -p dist/bin
     - run: cp target/i686-pc-windows-msvc/release/${{ env.BIN_NAME }} dist/bin/${{ env.BIN_NAME }}
-    - uses: actions/upload-artifact@v2
+    - name: Codesign
+      uses: divvun/actions/codesign@develop
       with:
-        name: dist
+        path: dist/bin/${{ env.BIN_NAME }}
+    - name: Create tarball package
+      uses: divvun/actions/create-txz@develop
+      with:
         path: dist
-  release:
-    needs: build
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: Get version
-        uses: divvun/actions/version@develop
-        with:
-          cargo: true
-      - name: Download artifact
-        uses: actions/download-artifact@v1
-        with:
-          name: dist
-      - name: Codesign
-        uses: divvun/actions/codesign@develop
-        with:
-          path: dist/bin/${{ env.BIN_NAME }}
-      - name: Create tarball package
-        uses: divvun/actions/create-txz@develop
-        with:
-          path: dist
