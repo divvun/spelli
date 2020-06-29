@@ -1,4 +1,4 @@
-name: Deploy Release
+name: Build and deploy
 
 on:
   push:
@@ -43,9 +43,11 @@ jobs:
         command: build
         args: --release --target i686-pc-windows-msvc
         toolchain: stable
-    - run: mkdir -p dist/bin
-    - run: cp target/i686-pc-windows-msvc/release/${{ env.BIN_NAME }} dist/bin/${{ env.BIN_NAME }}
-    - name: Codesign
+    - name: Create dist directory
+      run: |
+        mkdir -p dist/bin
+        cp target/i686-pc-windows-msvc/release/${{ env.BIN_NAME }} dist/bin/${{ env.BIN_NAME }}
+    - name: Sign code
       uses: divvun/actions/codesign@develop
       with:
         path: dist/bin/${{ env.BIN_NAME }}
