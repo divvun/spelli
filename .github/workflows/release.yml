@@ -1,9 +1,10 @@
-name: Build and deploy
+name: spelli
 
 on:
   push:
     branches:
       - master
+      - develop
       - release
 
 env:
@@ -25,9 +26,18 @@ jobs:
       with:
         key: ${{ secrets.DIVVUN_KEY }}
     - name: Get version
+      id: version
       uses: divvun/actions/version@develop
       with:
         cargo: true
+        nightly: master, develop
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Install build dependencies
+      uses: divvun/actions/pahkat/init@develop
+      with:
+        repo: https://pahkat.uit.no/devtools/
+        channel: nightly
+        packages: pahkat-uploader
     - name: Install Rust toolchain
       uses: actions-rs/toolchain@v1
       with:
@@ -52,6 +62,20 @@ jobs:
       with:
         path: dist/bin/${{ env.BIN_NAME }}
     - name: Create tarball package
+      id: tarball
       uses: divvun/actions/create-txz@develop
       with:
         path: dist
+    - name: Deploy
+      uses: divvun/actions/deploy@develop
+      with:
+        package-id: spelli
+        platform: windows
+        arch: i686
+        type: TarballPackage
+        version: ${{ steps.version.outputs.version }}
+        payload-path: ${{ steps.tarball.outputs['txz-path'] }}
+        repo: https://pahkat.thetc.se/devtools/
+        channel: ${{ steps.version.outputs.channel }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
