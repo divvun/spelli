@@ -39,8 +39,8 @@ const BASE_PROOF_TOOL_PATH: &str = r"SOFTWARE\Microsoft\Shared Tools\Proofing To
 const PATH_CREATE: &str = "Create";
 const PATH_DELETE: &str = "Delete";
 
-const DIVVUNSPELL_MSO_32: &str = r"C:\Program Files\WinDivvun\divvunspell-mso32.dll";
-const DIVVUNSPELL_MSO_64: &str = r"C:\Program Files\WinDivvun\divvunspell-mso64.dll";
+const DIVVUNSPELL_MSO_32: &str = r"C:\Program Files\WinDivvun\i686\divvunspellmso.dll";
+const DIVVUNSPELL_MSO_64: &str = r"C:\Program Files\WinDivvun\x86_64\divvunspellmso.dll";
 
 fn add_create_key(base_path: &str, lang_id: &str, speller_path: &str) -> Result<(), Error> {
     // Check if value exists in Delete
