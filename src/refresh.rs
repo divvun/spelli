@@ -1,14 +1,103 @@
-use crate::reg;
+use crate::{reg, register};
 use registry::{Data, Hive, RegKey, Security};
+use serde::Deserialize;
+use std::{
+    collections::BTreeMap,
+    fs::{self, File},
+    io::Read,
+    path::{Path, PathBuf},
+};
+use unic_langid::LanguageIdentifier;
 
-pub(crate) fn refresh() {
+#[derive(Debug, Clone, Deserialize)]
+struct SpellerToml {
+    spellers: BTreeMap<String, String>,
+}
+
+#[derive(Debug, thiserror::Error)]
+pub(crate) enum Error {
+    #[error("A registry error occurred")]
+    Registry(#[from] reg::Error),
+
+    #[error("An IO error occurred")]
+    Io(#[from] std::io::Error),
+
+    #[error("Invalid language tag")]
+    InvalidLanguageTag(#[from] unic_langid::LanguageIdentifierError),
+}
+
+pub(crate) fn refresh() -> Result<(), Error> {
+    // Try to read the spellers directory before we blindly delete everything
+    let speller_dirs = std::fs::read_dir(reg::SPELLER_DIR)?;
+    let speller_tomls: Vec<(PathBuf, SpellerToml)> = speller_dirs
+        .into_iter()
+        .filter_map(|x| match x {
+            Ok(v) if v.metadata().map(|m| m.is_dir()).unwrap_or(false) => Some(v.path()),
+            _ => None,
+        })
+        .filter_map(|path| {
+            let p = path.join("speller.toml");
+            match File::open(&p) {
+                Ok(v) => Some((path, v)),
+                Err(e) => {
+                    log::error!("Error loading speller.toml at path: {}", path.display());
+                    log::error!("{:?}", e);
+                    None
+                }
+            }
+        })
+        .filter_map(|(path, mut file)| {
+            let mut s = String::new();
+            match file.read_to_string(&mut s) {
+                Ok(_) => {}
+                Err(e) => {
+                    log::error!("Error reading `{}`", path.display());
+                    log::error!("{:?}", e);
+                    return None;
+                }
+            }
+            match toml::from_str(&s) {
+                Ok(x) => Some((path, x)),
+                Err(e) => {
+                    log::error!("Error parsing `{}`", path.display());
+                    log::error!("{:?}", e);
+                    None
+                }
+            }
+        })
+        .collect::<Vec<_>>();
+
+    // Remove all currently added languages
+    reg::nuke_key()?;
+
+    // Add languages that exist with a valid toml file
+    for (toml_path, speller_toml) in speller_tomls {
+        log::info!("Reading {}...", toml_path.display());
+
+        for (tag, path) in speller_toml.spellers.iter() {
+            let lang_id: LanguageIdentifier = tag.parse()?;
+            log::info!("Registering speller for '{}'...", &lang_id);
+
+            let keys = match register::derive_lang_id_keys(lang_id) {
+                Ok(v) => v,
+                Err(e) => {
+                    log::error!("Error deriving language keys for `{}`", tag);
+                    log::error!("{:?}", e);
+                    continue;
+                }
+            };
+
+            crate::reg::register_langs(&keys, &Path::new(path))?;
+        }
+    }
+
     // Iterate relevant registry key for all lang-id -> zhfst path value pairs
     log::info!("Detecting MS Office installations...");
 
     let offices = detect_ms_office();
     if offices.is_empty() {
         log::warn!("No Office installations detected; aborting.");
-        return;
+        return Ok(());
     }
 
     let langs = reg::Langs::new().unwrap();
@@ -26,6 +115,7 @@ pub(crate) fn refresh() {
     }
 
     log::info!("Refresh completed.");
+    Ok(())
 }
 
 const KEY_UNINSTALL: &str = r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall";

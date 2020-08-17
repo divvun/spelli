@@ -30,7 +30,7 @@ pub(crate) fn nuke_key() -> Result<(), Error> {
             .map(|x| x.to_string_lossy())
             .collect::<Vec<_>>(),
     )?;
-    crate::refresh::refresh();
+    // crate::refresh::refresh();
     log::info!("All languages have now been marked as deregistered.");
     Ok(())
 }
@@ -39,6 +39,7 @@ const BASE_PROOF_TOOL_PATH: &str = r"SOFTWARE\Microsoft\Shared Tools\Proofing To
 const PATH_CREATE: &str = "Create";
 const PATH_DELETE: &str = "Delete";
 
+pub(crate) const SPELLER_DIR: &str = r"C:\Program Files\WinDivvun\Spellers\";
 const DIVVUNSPELL_MSO_32: &str = r"C:\Program Files\WinDivvun\i686\divvunspellmso.dll";
 const DIVVUNSPELL_MSO_64: &str = r"C:\Program Files\WinDivvun\x86_64\divvunspellmso.dll";
 

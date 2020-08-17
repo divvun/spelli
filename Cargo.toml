@@ -16,3 +16,5 @@ registry = "1.0.0-alpha.1"
 thiserror = "1.0.20"
 unic-langid = "0.9.0"
 widestring = { version = "0.1.0", package = "utfx" }
+serde = { version = "1.0.115", features = ["derive"] }
+toml = "0.5.6"

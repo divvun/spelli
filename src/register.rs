@@ -87,16 +87,16 @@ pub(crate) fn derive_lang_id_keys(mut lang_id: LanguageIdentifier) -> Result<Vec
     Ok(keys)
 }
 
-pub(crate) fn register(args: RegisterArgs) -> Result<(), Error> {
-    let lang_id: LanguageIdentifier = args.tag.parse()?;
-    log::info!("Registering speller for '{}'...", &lang_id);
+// pub(crate) fn register(args: RegisterArgs) -> Result<(), Error> {
+//     let lang_id: LanguageIdentifier = args.tag.parse()?;
+//     log::info!("Registering speller for '{}'...", &lang_id);
 
-    let keys = derive_lang_id_keys(lang_id)?;
-    crate::reg::register_langs(&keys, &*args.path)?;
+//     let keys = derive_lang_id_keys(lang_id)?;
+//     crate::reg::register_langs(&keys, &*args.path)?;
 
-    crate::refresh::refresh();
+//     crate::refresh::refresh();
 
-    log::info!("Registration complete!");
+//     log::info!("Registration complete!");
 
-    Ok(())
-}
+//     Ok(())
+// }

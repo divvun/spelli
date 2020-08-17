@@ -3,7 +3,10 @@ pub(crate) fn list() {
 
     println!("Registered spellers:");
 
-    let results = key.values().map(|x| x.unwrap().into_inner()).collect::<Vec<_>>();
+    let results = key
+        .values()
+        .map(|x| x.unwrap().into_inner())
+        .collect::<Vec<_>>();
 
     if results.is_empty() {
         println!("  - No spellers registered.");

@@ -17,12 +17,11 @@ struct Args {
 
 #[derive(Debug, Options)]
 enum Command {
-    #[options(help = "Register a speller with the system")]
-    Register(RegisterArgs),
+    // #[options(help = "Register a speller with the system")]
+    // Register(RegisterArgs),
 
-    #[options(help = "Deregister a speller from the system")]
-    Deregister(DeregisterArgs),
-
+    // #[options(help = "Deregister a speller from the system")]
+    // Deregister(DeregisterArgs),
     #[options(help = "Refresh registry keys for registered spellers")]
     Refresh(RefreshArgs),
 
@@ -75,7 +74,7 @@ struct NukeArgs {
 fn setup_logger() {
     let log_path = pathos::system::app_log_dir("WinDivvun");
     match std::fs::create_dir_all(&log_path) {
-        Ok(_) => {},
+        Ok(_) => {}
         Err(e) => {
             eprintln!("{:?}", e);
             eprintln!("LOGGING IS DISABLED!");
@@ -112,25 +111,17 @@ fn main() {
         }
     };
 
-    let result = match command {
-        Command::Register(args) => register::register(args),
-        Command::Deregister(args) => deregister::deregister(args),
+    match command {
+        // Command::Register(args) => register::register(args),
+        // Command::Deregister(args) => deregister::deregister(args),
         Command::Refresh(_args) => {
-            refresh::refresh();
-            Ok(())
+            refresh::refresh().unwrap();
         }
         Command::List(_args) => {
             list::list();
-            Ok(())
         }
         Command::Nuke(_args) => {
             crate::reg::nuke_key().unwrap();
-            Ok(())
         }
-    };
-
-    if let Err(err) = result {
-        eprintln!("Error: {:?}", err);
-        std::process::exit(1);
     }
 }
