@@ -197,6 +197,8 @@ impl Office {
 }
 
 fn parse_office_key(regkey: &RegKey) -> Option<Office> {
+    log::trace!("Parsing: {:?}", regkey);
+
     let publisher = regkey.value("Publisher").ok()?;
     let display_name = regkey.value("DisplayName").ok()?;
     let display_version = regkey.value("DisplayVersion").ok()?;
@@ -207,16 +209,19 @@ fn parse_office_key(regkey: &RegKey) -> Option<Office> {
         Data::String(s) if s.to_string_lossy() == "Microsoft Corporation" => {}
         _ => return None,
     };
+    log::trace!("Correct publisher");
 
     match display_name {
         Data::String(s) if s.to_string_lossy().starts_with("Microsoft Office") => {}
         _ => return None,
     }
+    log::trace!("Correct display name");
 
     match install_location {
         Data::String(s) if s.to_string_lossy().ends_with("Microsoft Office") => {}
         _ => return None,
     }
+    log::trace!("Correct install location");
 
     let major_version: u32 = match display_version {
         Data::String(s) => s
@@ -226,8 +231,11 @@ fn parse_office_key(regkey: &RegKey) -> Option<Office> {
             .and_then(|x| x.parse::<u32>().ok())?,
         _ => return None,
     };
+    log::trace!("Valid major version");
 
     let is_click_to_run = click_to_run_component.is_ok();
+
+    log::trace!("Is click to run? {}", is_click_to_run);
 
     Some(Office {
         variant: if is_click_to_run {
@@ -240,7 +248,7 @@ fn parse_office_key(regkey: &RegKey) -> Option<Office> {
 }
 
 fn detect_ms_office() -> Vec<Office> {
-    log::debug!("Opening primary uninstall key");
+    log::trace!("Opening primary uninstall key");
     let regkey = Hive::LocalMachine
         .open(KEY_UNINSTALL, Security::Read)
         .unwrap();
@@ -255,7 +263,13 @@ fn detect_ms_office() -> Vec<Office> {
 
     let office_installs = iter
         .flat_map(|keyref| {
-            let subkey = keyref.open(Security::Read).ok()?;
+            let subkey = match keyref.open(Security::Read) {
+                Ok(v) => v,
+                Err(e) => {
+                    log::error!("{:?}", e);
+                    return None;
+                }
+            };
             parse_office_key(&subkey)
         })
         .collect::<Vec<_>>();

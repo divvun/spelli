@@ -92,7 +92,7 @@ fn setup_logger() {
                 message
             ))
         })
-        .level(log::LevelFilter::Debug)
+        .level(log::LevelFilter::Trace)
         .chain(std::io::stdout())
         .chain(fern::log_file(log_path.join("spelli.log")).unwrap())
         .apply()
