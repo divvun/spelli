@@ -87,7 +87,7 @@ pub(crate) fn refresh() -> Result<(), Error> {
                 }
             };
 
-            crate::reg::register_langs(&keys, &Path::new(path))?;
+            crate::reg::register_langs(&keys, &toml_path.join(path))?;
         }
     }
 
@@ -113,6 +113,8 @@ pub(crate) fn refresh() -> Result<(), Error> {
             }
         }
     }
+
+
 
     log::info!("Refresh completed.");
     Ok(())

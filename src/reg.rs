@@ -110,7 +110,7 @@ pub(crate) fn register_langs(names: &[String], path: &Path) -> Result<(), Error>
 }
 
 pub(crate) fn set_regkey_counter(base_path: &str) -> Result<(), Error> {
-    let regkey = Hive::LocalMachine.create(base_path, Security::Write)?;
+    let regkey = Hive::LocalMachine.create(base_path, Security::Write | Security::Wow6464Key)?;
     // Our epoch starts at 2020-01-01.
     let our_epoch = UNIX_EPOCH + Duration::from_secs(1577836800);
     let ts: u32 = SystemTime::now()
