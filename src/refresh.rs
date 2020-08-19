@@ -197,13 +197,19 @@ impl Office {
 }
 
 fn parse_office_key(regkey: &RegKey) -> Option<Office> {
-    log::trace!("Parsing: {:?}", regkey);
+    log::trace!("Parsing: {}", regkey);
 
     let publisher = regkey.value("Publisher").ok()?;
     let display_name = regkey.value("DisplayName").ok()?;
     let display_version = regkey.value("DisplayVersion").ok()?;
     let install_location = regkey.value("InstallLocation").ok()?;
     let click_to_run_component = regkey.value("ClickToRunComponent");
+
+    log::trace!("Publisher: {:?}", &publisher);
+    log::trace!("Display name: {:?}", &display_name);
+    log::trace!("Display version: {:?}", &display_version);
+    log::trace!("Install location: {:?}", &install_location);
+    log::trace!("Click to run component: {:?}", &click_to_run_component);
 
     match publisher {
         Data::String(s) if s.to_string_lossy() == "Microsoft Corporation" => {}
