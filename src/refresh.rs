@@ -1,7 +1,7 @@
 use crate::{reg, register};
 use registry::{Data, Hive, RegKey, Security};
 use serde::Deserialize;
-use std::{collections::BTreeMap, fs::File, io::Read, path::PathBuf};
+use std::{collections::BTreeMap, fmt::Display, fs::File, io::Read, path::PathBuf};
 use unic_langid::LanguageIdentifier;
 
 #[derive(Debug, Clone, Deserialize)]
@@ -22,6 +22,8 @@ pub(crate) enum Error {
 }
 
 pub(crate) fn refresh() -> Result<(), Error> {
+    log::info!("Beginning refresh process");
+
     // Try to read the spellers directory before we blindly delete everything
     let speller_dirs = std::fs::read_dir(reg::SPELLER_DIR)?;
     let speller_tomls: Vec<(PathBuf, SpellerToml)> = speller_dirs
@@ -203,55 +205,103 @@ impl Office {
     }
 }
 
+#[derive(Debug, Clone)]
+struct CandidateRegKey {
+    publisher: Option<Data>,
+    display_name: Option<Data>,
+    display_version: Option<Data>,
+    install_location: Option<Data>,
+    click_to_run_component: Option<Data>,
+}
+
+impl Display for CandidateRegKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(
+            f,
+            "Publisher: {:?}",
+            self.publisher.as_ref().map(|x| x.to_string())
+        )?;
+        writeln!(
+            f,
+            "DisplayName: {:?}",
+            &self.display_name.as_ref().map(|x| x.to_string())
+        )?;
+        writeln!(
+            f,
+            "DisplayVersion: {:?}",
+            &self.display_version.as_ref().map(|x| x.to_string())
+        )?;
+        writeln!(
+            f,
+            "InstallLocation: {:?}",
+            &self.install_location.as_ref().map(|x| x.to_string())
+        )?;
+        writeln!(f, "ClickToRunComponent: {:?}", self.click_to_run_component)?;
+        Ok(())
+    }
+}
+
+impl From<&RegKey> for CandidateRegKey {
+    fn from(regkey: &RegKey) -> Self {
+        let publisher = regkey.value("Publisher").ok();
+        let display_name = regkey.value("DisplayName").ok();
+        let display_version = regkey.value("DisplayVersion").ok();
+        let install_location = regkey.value("InstallLocation").ok();
+        let click_to_run_component = regkey.value("ClickToRunComponent").ok();
+
+        Self {
+            publisher,
+            display_name,
+            display_version,
+            install_location,
+            click_to_run_component,
+        }
+    }
+}
+
+impl CandidateRegKey {
+    fn validate(&self) -> Option<Office> {
+        if self.publisher.as_ref()?.to_string() != "Microsoft Corporation" {
+            return None;
+        }
+
+        if !self
+            .display_name
+            .as_ref()?
+            .to_string()
+            .starts_with("Microsoft Office")
+        {
+            return None;
+        }
+
+        let major_version: u32 = match self.display_version.as_ref() {
+            Some(Data::String(s)) => s
+                .to_string_lossy()
+                .split(".")
+                .next()
+                .and_then(|x| x.parse::<u32>().ok())?,
+            _ => return None,
+        };
+
+        let is_click_to_run = self.click_to_run_component.is_some();
+
+        Some(Office {
+            variant: if is_click_to_run {
+                InstallMethod::Click2Run
+            } else {
+                InstallMethod::Msi
+            },
+            major_version,
+        })
+    }
+}
+
 fn parse_office_key(regkey: &RegKey) -> Option<Office> {
     log::trace!("Parsing: {}", regkey);
 
-    let publisher = regkey.value("Publisher").ok()?;
-    let display_name = regkey.value("DisplayName").ok()?;
-    let display_version = regkey.value("DisplayVersion").ok()?;
-    let install_location = regkey.value("InstallLocation").ok()?;
-    let click_to_run_component = regkey.value("ClickToRunComponent");
-
-    match publisher {
-        Data::String(s) if s.to_string_lossy() == "Microsoft Corporation" => {}
-        _ => return None,
-    };
-    log::trace!("Correct publisher");
-
-    match display_name {
-        Data::String(s) if s.to_string_lossy().starts_with("Microsoft Office") => {}
-        _ => return None,
-    }
-    log::trace!("Correct display name");
-
-    match install_location {
-        Data::String(s) if s.to_string_lossy().ends_with("Microsoft Office") => {}
-        _ => return None,
-    }
-    log::trace!("Correct install location");
-
-    let major_version: u32 = match display_version {
-        Data::String(s) => s
-            .to_string_lossy()
-            .split(".")
-            .next()
-            .and_then(|x| x.parse::<u32>().ok())?,
-        _ => return None,
-    };
-    log::trace!("Valid major version");
-
-    let is_click_to_run = click_to_run_component.is_ok();
-
-    log::trace!("Is click to run? {}", is_click_to_run);
-
-    Some(Office {
-        variant: if is_click_to_run {
-            InstallMethod::Click2Run
-        } else {
-            InstallMethod::Msi
-        },
-        major_version,
-    })
+    let regkey = CandidateRegKey::from(regkey);
+    log::trace!("{}", &regkey);
+    regkey.validate()
 }
 
 fn detect_ms_office() -> Vec<Office> {
