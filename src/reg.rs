@@ -56,7 +56,8 @@ fn add_create_key(base_path: &str, lang_id: &str, speller_path: &str) -> Result<
     // Now to create the Create record
     let full_create_path = vec![base_path, PATH_CREATE, BASE_PROOF_TOOL_PATH, lang_id].join(r"\");
 
-    let regkey = Hive::LocalMachine.create(full_create_path, Security::AllAccess | Security::Wow6464Key)?;
+    let regkey =
+        Hive::LocalMachine.create(full_create_path, Security::AllAccess | Security::Wow6464Key)?;
     regkey.set_value("LEX", &Data::String(speller_path.try_into().unwrap()))?;
     regkey.set_value("LEX64", &Data::String(speller_path.try_into().unwrap()))?;
     regkey.set_value("DLL", &Data::String(DIVVUNSPELL_MSO_32.try_into().unwrap()))?;
@@ -81,7 +82,8 @@ fn add_delete_key(base_path: &str, lang_id: &str) -> Result<(), Error> {
     // Now to create the Create record
     let full_delete_path = vec![base_path, PATH_DELETE, BASE_PROOF_TOOL_PATH, lang_id].join(r"\");
 
-    let regkey = Hive::LocalMachine.create(full_delete_path, Security::AllAccess | Security::Wow6464Key)?;
+    let regkey =
+        Hive::LocalMachine.create(full_delete_path, Security::AllAccess | Security::Wow6464Key)?;
     regkey.set_value("LEX", &Data::String("".try_into().unwrap()))?;
     regkey.set_value("LEX64", &Data::String("".try_into().unwrap()))?;
     regkey.set_value("DLL", &Data::String("".try_into().unwrap()))?;

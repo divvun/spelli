@@ -17,11 +17,6 @@ struct Args {
 
 #[derive(Debug, Options)]
 enum Command {
-    // #[options(help = "Register a speller with the system")]
-    // Register(RegisterArgs),
-
-    // #[options(help = "Deregister a speller from the system")]
-    // Deregister(DeregisterArgs),
     #[options(help = "Refresh registry keys for registered spellers")]
     Refresh(RefreshArgs),
 
@@ -112,8 +107,6 @@ fn main() {
     };
 
     match command {
-        // Command::Register(args) => register::register(args),
-        // Command::Deregister(args) => deregister::deregister(args),
         Command::Refresh(_args) => {
             refresh::refresh().unwrap();
         }

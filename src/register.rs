@@ -1,5 +1,3 @@
-use crate::RegisterArgs;
-
 use std::{collections::HashSet, convert::Infallible};
 use unic_langid::{
     subtags::{Region, Script},

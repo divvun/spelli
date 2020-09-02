@@ -1,12 +1,7 @@
 use crate::{reg, register};
 use registry::{Data, Hive, RegKey, Security};
 use serde::Deserialize;
-use std::{
-    collections::BTreeMap,
-    fs::{self, File},
-    io::Read,
-    path::{Path, PathBuf},
-};
+use std::{collections::BTreeMap, fs::File, io::Read, path::PathBuf};
 use unic_langid::LanguageIdentifier;
 
 #[derive(Debug, Clone, Deserialize)]
@@ -114,15 +109,11 @@ pub(crate) fn refresh() -> Result<(), Error> {
         }
     }
 
-
-
     log::info!("Refresh completed.");
     Ok(())
 }
 
 const KEY_UNINSTALL: &str = r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall";
-const KEY_UNINSTALL_WOW64: &str =
-    r"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall";
 
 #[derive(Debug)]
 struct Office {
