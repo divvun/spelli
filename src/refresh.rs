@@ -135,6 +135,14 @@ impl Office {
         log::debug!("Getting user settings path for 64-bit Windows installation...");
 
         match (&self.variant, self.major_version) {
+            (InstallMethod::Msi, 14) => Some(&[
+                r"SOFTWARE\Microsoft\Office\14.0\User Settings\WinDivvun",
+                r"SOFTWARE\Wow6432Node\Microsoft\Office\14.0\User Settings\WinDivvun",
+            ]),
+            (InstallMethod::Click2Run, 14) => Some(&[
+                r"SOFTWARE\Microsoft\Office\ClickToRun\REGISTRY\MACHINE\Software\Microsoft\Office\14.0\User Settings\WinDivvun",
+                r"SOFTWARE\Microsoft\Office\ClickToRun\REGISTRY\MACHINE\Software\Wow6432Node\Microsoft\Office\14.0\User Settings\WinDivvun",
+            ]),
             (InstallMethod::Msi, 15) => Some(&[
                 r"SOFTWARE\Microsoft\Office\15.0\User Settings\WinDivvun",
                 r"SOFTWARE\Wow6432Node\Microsoft\Office\15.0\User Settings\WinDivvun",
@@ -174,6 +182,12 @@ impl Office {
         log::debug!("Getting user settings path for 32-bit (or 64-bit missing WOW64) Windows installation...");
 
         match (&self.variant, self.major_version) {
+            (InstallMethod::Msi, 14) => {
+                Some(&[r"SOFTWARE\Microsoft\Office\14.0\User Settings\WinDivvun"])
+            }
+            (InstallMethod::Click2Run, 14) => Some(&[
+                r"SOFTWARE\Microsoft\Office\ClickToRun\REGISTRY\MACHINE\Software\Microsoft\Office\14.0\User Settings\WinDivvun",
+            ]),
             (InstallMethod::Msi, 15) => {
                 Some(&[r"SOFTWARE\Microsoft\Office\15.0\User Settings\WinDivvun"])
             }
