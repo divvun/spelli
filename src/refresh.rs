@@ -90,12 +90,13 @@ pub(crate) fn refresh() -> Result<(), Error> {
 
     // Iterate relevant registry key for all lang-id -> zhfst path value pairs
     log::info!("Detecting MS Office installations...");
+    let _unused = detect_ms_office();
 
-    let offices = detect_ms_office();
-    if offices.is_empty() {
-        log::warn!("No Office installations detected; aborting.");
-        return Ok(());
-    }
+    let offices = Office::all_supported();
+    // if offices.is_empty() {
+    //     log::warn!("No Office installations detected; aborting.");
+    //     return Ok(());
+    // }
 
     let langs = reg::Langs::new().unwrap();
     for paths in offices.iter().flat_map(|x| x.user_settings_paths()) {
@@ -124,6 +125,25 @@ struct Office {
 }
 
 impl Office {
+    fn all_supported() -> Vec<Office> {
+        let mut out = vec![];
+
+        for i in 10..=16 {
+            out.push(Office {
+                variant: InstallMethod::Msi,
+                major_version: i,
+            });
+        }
+        for i in 15..=16 {
+            out.push(Office {
+                variant: InstallMethod::Click2Run,
+                major_version: i,
+            });
+        }
+
+        out
+    }
+
     fn user_settings_paths_wow64(&self) -> Option<&[&str]> {
         log::debug!("Getting user settings path for 64-bit Windows installation...");
 
