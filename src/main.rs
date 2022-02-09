@@ -1,4 +1,5 @@
 mod deregister;
+mod libreoffice;
 mod list;
 mod refresh;
 mod reg;
@@ -115,6 +116,7 @@ fn main() {
         }
         Command::Nuke(_args) => {
             crate::reg::nuke_key().unwrap();
+            crate::libreoffice::nuke();
         }
     }
 }

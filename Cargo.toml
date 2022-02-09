@@ -18,3 +18,4 @@ unic-langid = "0.9.0"
 widestring = { version = "0.1.0", package = "utfx" }
 serde = { version = "1.0.115", features = ["derive"] }
 toml = "0.5.6"
+windirs = "1.0.1"

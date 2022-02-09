@@ -1,8 +1,12 @@
-use crate::{reg, register};
+use crate::{libreoffice, reg, register};
 use registry::{Data, Hive, RegKey, Security};
 use serde::Deserialize;
-use std::{collections::BTreeMap, fmt::Display, fs::File, io::Read, path::PathBuf};
+use std::{
+    collections::BTreeMap, fmt::Display, fs::File, io::Read, path::PathBuf, process::Command,
+};
 use unic_langid::LanguageIdentifier;
+
+const OXT_DATA: &[u8] = include_bytes!("../divvunspell-libreoffice.oxt");
 
 #[derive(Debug, Clone, Deserialize)]
 struct SpellerToml {
@@ -112,11 +116,17 @@ pub(crate) fn refresh() -> Result<(), Error> {
         }
     }
 
+    refresh_libreoffice_spellchecker();
+
     log::info!("Refresh completed.");
     Ok(())
 }
 
 const KEY_UNINSTALL: &str = r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall";
+
+pub struct LibreOffice {
+    pub install_path: PathBuf,
+}
 
 #[derive(Debug)]
 struct Office {
@@ -226,7 +236,7 @@ impl Office {
 }
 
 #[derive(Debug, Clone)]
-struct CandidateRegKey {
+pub struct CandidateRegKey {
     publisher: Option<Data>,
     display_name: Option<Data>,
     display_version: Option<Data>,
@@ -280,7 +290,7 @@ impl From<&RegKey> for CandidateRegKey {
 }
 
 impl CandidateRegKey {
-    fn validate(&self) -> Option<Office> {
+    fn validate_office(&self) -> Option<Office> {
         if self.publisher.as_ref()?.to_string() != "Microsoft Corporation" {
             return None;
         }
@@ -314,18 +324,26 @@ impl CandidateRegKey {
             major_version,
         })
     }
+
+    pub fn validate_libreoffice(&self) -> Option<LibreOffice> {
+        if !self
+            .display_name
+            .as_ref()?
+            .to_string()
+            .starts_with("LibreOffice")
+        {
+            return None;
+        }
+
+        self.install_location
+            .as_ref()
+            .map(|install_path| LibreOffice {
+                install_path: PathBuf::from(install_path.to_string()),
+            })
+    }
 }
 
-fn parse_office_key(regkey: &RegKey) -> Option<Office> {
-    log::trace!("Parsing: {}", regkey);
-
-    let regkey = CandidateRegKey::from(regkey);
-    log::trace!("{}", &regkey);
-    regkey.validate()
-}
-
-fn detect_ms_office() -> Vec<Office> {
-    log::trace!("Opening primary uninstall key");
+pub(crate) fn get_candidate_regkeys() -> Vec<CandidateRegKey> {
     let regkey = Hive::LocalMachine
         .open(KEY_UNINSTALL, Security::Read | Security::Wow6464Key)
         .unwrap();
@@ -338,20 +356,28 @@ fn detect_ms_office() -> Vec<Office> {
         .flat_map(Result::ok)
         .chain(regkey_wow64.keys().flat_map(Result::ok));
 
-    let office_installs = iter
-        .flat_map(|keyref| {
-            let subkey = match keyref.open(Security::Read) {
-                Ok(v) => v,
-                Err(e) => {
-                    log::error!("{:?}", e);
-                    return None;
-                }
-            };
-            parse_office_key(&subkey)
-        })
+    iter.filter_map(|keyref| {
+        let subkey = match keyref.open(Security::Read) {
+            Ok(v) => v,
+            Err(e) => {
+                log::error!("{:?}", e);
+                return None;
+            }
+        };
+        log::trace!("Parsing: {}", regkey);
+        Some(CandidateRegKey::from(&subkey))
+    })
+    .collect::<Vec<_>>()
+}
+
+fn detect_ms_office() -> Vec<Office> {
+    let office_installs = get_candidate_regkeys()
+        .iter()
+        .filter_map(|candidate| candidate.validate_office())
         .collect::<Vec<_>>();
 
-    for office in office_installs.iter() {
+    log::trace!("Opening primary uninstall key");
+    for office in &office_installs {
         log::info!(
             "Found Office {} {:?}!",
             &office.major_version,
@@ -366,4 +392,65 @@ fn detect_ms_office() -> Vec<Office> {
 enum InstallMethod {
     Click2Run,
     Msi,
+}
+
+fn refresh_libreoffice_spellchecker() {
+    let unopkg_path = libreoffice::find_unopkg();
+    if unopkg_path.is_none() {
+        log::error!("Couldn't find unopkg, aborting LibreOffice spellechecker installation");
+        return;
+    }
+    let unopkg_path = unopkg_path.unwrap();
+
+    let install_path = libreoffice::get_speller_install_directory();
+    if let Err(e) = std::fs::create_dir_all(&install_path) {
+        log::error!(
+            "Failed to create install directory for LibreOffice speller: {}",
+            e
+        );
+        return;
+    }
+
+    let oxt_path = install_path.join("divvunspell.oxt");
+    if let Err(e) = std::fs::write(&oxt_path, OXT_DATA) {
+        log::error!("Failed to write divvunspell.oxt: {}", e);
+        return;
+    }
+
+    log::info!("Trying to remove previous installation if it exists");
+    let result = Command::new(&unopkg_path)
+        .args(&["remove", "--shared", "no.divvun.DivvunSpell"])
+        .output();
+
+    match result {
+        Err(e) => {
+            log::error!("Failed to start unokpg process: {}", e);
+            return;
+        }
+        Ok(v) => {
+            // We don't care if it fails here, it means that it wasn't installed in the first place
+            log::debug!("Unopkg remove exited with status: {}", v.status)
+        }
+    }
+
+    let result = Command::new(unopkg_path)
+        .args(&["add", "--shared", oxt_path.to_str().unwrap()])
+        .output();
+
+    match result {
+        Err(e) => {
+            log::error!("Failed to start unokpg process: {}", e);
+            return;
+        }
+        Ok(v) => {
+            // We don't care if it fails here, it means that it wasn't installed in the first place
+            log::debug!("Unopkg install exited with status: {}", v.status);
+            if !v.status.success() {
+                log::error!("Failed to install the libreoffice extension");
+                log::error!("stdout: {}", &String::from_utf8_lossy(&v.stdout));
+                log::error!("stderr: {}", &String::from_utf8_lossy(&v.stderr));
+                return;
+            }
+        }
+    }
 }
