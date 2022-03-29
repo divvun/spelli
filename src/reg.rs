@@ -44,17 +44,20 @@ const DIVVUNSPELL_MSO_32: &str = r"C:\Program Files\WinDivvun\i686\divvunspellms
 const DIVVUNSPELL_MSO_64: &str = r"C:\Program Files\WinDivvun\x86_64\divvunspellmso.dll";
 
 fn add_create_key(base_path: &str, lang_id: &str, speller_path: &str) -> Result<(), Error> {
+    log::debug!("add_create_key");
     // Check if value exists in Delete
     let full_delete_path = vec![base_path, PATH_DELETE, BASE_PROOF_TOOL_PATH, lang_id].join(r"\");
+    log::debug!("full_delete_path {}", full_delete_path);
 
     match Hive::LocalMachine.delete(full_delete_path, true) {
-        Err(key::Error::NotFound(_, _)) => { /* no problem. */ }
+        Err(key::Error::NotFound(_, _)) => { log::info!("Key not found") }
         Err(e) => return Err(e)?,
-        _ => {}
+        Ok(_) => { log::info!("Key deleted") }
     };
 
     // Now to create the Create record
     let full_create_path = vec![base_path, PATH_CREATE, BASE_PROOF_TOOL_PATH, lang_id].join(r"\");
+    log::debug!("full_create_path {}", full_create_path);
 
     let regkey =
         Hive::LocalMachine.create(full_create_path, Security::AllAccess | Security::Wow6464Key)?;
@@ -65,22 +68,26 @@ fn add_create_key(base_path: &str, lang_id: &str, speller_path: &str) -> Result<
         "DLL64",
         &Data::String(DIVVUNSPELL_MSO_64.try_into().unwrap()),
     )?;
+    log::debug!("add_create_key done");
 
     Ok(())
 }
 
 fn add_delete_key(base_path: &str, lang_id: &str) -> Result<(), Error> {
+    log::debug!("add_delete_key");
     // Check if value exists in Create
     let full_create_path = vec![base_path, PATH_CREATE, BASE_PROOF_TOOL_PATH, lang_id].join(r"\");
+    log::debug!("full_create_path {}", full_create_path);
 
     match Hive::LocalMachine.delete(full_create_path, true) {
-        Err(key::Error::NotFound(_, _)) => { /* no problem. */ }
+        Err(key::Error::NotFound(_, _)) => { log::info!("Key not found") }
         Err(e) => return Err(e)?,
-        _ => {}
+        Ok(_) => { log::info!("Key deleted") }
     };
 
     // Now to create the Create record
     let full_delete_path = vec![base_path, PATH_DELETE, BASE_PROOF_TOOL_PATH, lang_id].join(r"\");
+    log::debug!("full_delete_path {}", full_delete_path);
 
     let regkey =
         Hive::LocalMachine.create(full_delete_path, Security::AllAccess | Security::Wow6464Key)?;
@@ -88,6 +95,8 @@ fn add_delete_key(base_path: &str, lang_id: &str) -> Result<(), Error> {
     regkey.set_value("LEX64", &Data::String("".try_into().unwrap()))?;
     regkey.set_value("DLL", &Data::String("".try_into().unwrap()))?;
     regkey.set_value("DLL64", &Data::String("".try_into().unwrap()))?;
+
+    log::debug!("add_delete_key done");
 
     Ok(())
 }
