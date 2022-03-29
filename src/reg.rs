@@ -47,10 +47,12 @@ fn add_create_key(base_path: &str, lang_id: &str, speller_path: &str) -> Result<
     // Check if value exists in Delete
     let full_delete_path = vec![base_path, PATH_DELETE, BASE_PROOF_TOOL_PATH, lang_id].join(r"\");
 
-    match Hive::LocalMachine.delete(full_delete_path, true) {
-        Err(key::Error::NotFound(_, _)) => { /* no problem. */ }
+    match Hive::LocalMachine.open(full_delete_path, Security::AllAccess | Security::Wow6464Key) {
+        Err(key::Error::NotFound(_, _)) => { /* ignore, it's already been deleted */ }
         Err(e) => return Err(e)?,
-        _ => {}
+        Ok(regkey) => {
+            regkey.delete_self(true)?
+        }
     };
 
     // Now to create the Create record
@@ -73,10 +75,12 @@ fn add_delete_key(base_path: &str, lang_id: &str) -> Result<(), Error> {
     // Check if value exists in Create
     let full_create_path = vec![base_path, PATH_CREATE, BASE_PROOF_TOOL_PATH, lang_id].join(r"\");
 
-    match Hive::LocalMachine.delete(full_create_path, true) {
-        Err(key::Error::NotFound(_, _)) => { /* no problem. */ }
+    match Hive::LocalMachine.open(full_create_path, Security::AllAccess | Security::Wow6464Key) {
+        Err(key::Error::NotFound(_, _)) => { /* ignore, it's already been deleted */ }
         Err(e) => return Err(e)?,
-        _ => {}
+        Ok(regkey) => {
+            regkey.delete_self(true)?
+        }
     };
 
     // Now to create the Create record
